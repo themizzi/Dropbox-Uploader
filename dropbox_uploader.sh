@@ -568,7 +568,11 @@ function db_simple_upload_file
     fi
 
     print " > Uploading \"$FILE_SRC\" to \"$FILE_DST\"... $LINE_CR"
-    $CURL_BIN $CURL_ACCEPT_CERTIFICATES $CURL_PARAMETERS -X POST -i --globoff -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"path\": \"$FILE_DST\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}" --header "Content-Type: application/octet-stream" --data-binary @"$FILE_SRC" "$API_UPLOAD_URL"
+    if [[ $ADMIN_USER = "" ]]; then
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES $CURL_PARAMETERS -X POST -i --globoff -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"path\": \"$FILE_DST\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}" --header "Content-Type: application/octet-stream" --data-binary @"$FILE_SRC" "$API_UPLOAD_URL"
+    else
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES $CURL_PARAMETERS -X POST -i --globoff -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"path\": \"$FILE_DST\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}" --header "Content-Type: application/octet-stream" --header "Dropbox-API-Select-Admin: $ADMIN_USER" --data-binary @"$FILE_SRC" "$API_UPLOAD_URL"
+    fi
     check_http_response
 
     #Check
@@ -616,7 +620,11 @@ function db_chunked_upload_file
     fi
 
     #Starting a new upload session
-    $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"close\": false}" --header "Content-Type: application/octet-stream" --data-binary @/dev/null "$API_CHUNKED_UPLOAD_START_URL" 2> /dev/null
+    if [[ $ADMIN_USER = "" ]]; then
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"close\": false}" --header "Content-Type: application/octet-stream" --data-binary @/dev/null "$API_CHUNKED_UPLOAD_START_URL" 2> /dev/null
+    else
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"close\": false}" --header "Content-Type: application/octet-stream" --header "Dropbox-API-Select-Admin: $ADMIN_USER" --data-binary @/dev/null "$API_CHUNKED_UPLOAD_START_URL" 2> /dev/null
+    fi
     check_http_response
 
     SESSION_ID=$(sed -n 's/{"session_id": *"*\([^"]*\)"*.*/\1/p' "$RESPONSE_FILE")
@@ -637,7 +645,11 @@ function db_chunked_upload_file
 
         #Uploading the chunk...
         echo > "$RESPONSE_FILE"
-        $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST $CURL_PARAMETERS --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $OFFSET},\"close\": false}" --header "Content-Type: application/octet-stream" --data-binary @"$CHUNK_FILE" "$API_CHUNKED_UPLOAD_APPEND_URL"
+        if [[ $ADMIN_USER = "" ]]; then
+            $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST $CURL_PARAMETERS --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $OFFSET},\"close\": false}" --header "Content-Type: application/octet-stream" --data-binary @"$CHUNK_FILE" "$API_CHUNKED_UPLOAD_APPEND_URL"
+        else
+            $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST $CURL_PARAMETERS --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $OFFSET},\"close\": false}" --header "Content-Type: application/octet-stream" --header "Dropbox-API-Select-Admin: $ADMIN_USER" --data-binary @"$CHUNK_FILE" "$API_CHUNKED_UPLOAD_APPEND_URL"
+        fi
         #check_http_response not needed, because we have to retry the request in case of error
 
         #Check
@@ -671,7 +683,11 @@ function db_chunked_upload_file
     while (true); do
 
         echo > "$RESPONSE_FILE"
-        $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $OFFSET},\"commit\": {\"path\": \"$FILE_DST\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}}" --header "Content-Type: application/octet-stream" --data-binary @/dev/null "$API_CHUNKED_UPLOAD_FINISH_URL" 2> /dev/null
+        if [[ $ADMIN_USER = "" ]]; then
+            $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $OFFSET},\"commit\": {\"path\": \"$FILE_DST\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}}" --header "Content-Type: application/octet-stream" --data-binary @/dev/null "$API_CHUNKED_UPLOAD_FINISH_URL" 2> /dev/null
+        else
+            $CURL_BIN $CURL_ACCEPT_CERTIFICATES -X POST -L -s --show-error --globoff -i -o "$RESPONSE_FILE" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"cursor\": {\"session_id\": \"$SESSION_ID\",\"offset\": $OFFSET},\"commit\": {\"path\": \"$FILE_DST\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}}" --header "Content-Type: application/octet-stream" --header "Dropbox-API-Select-Admin: $ADMIN_USER" --data-binary @/dev/null "$API_CHUNKED_UPLOAD_FINISH_URL" 2> /dev/null
+        fi
         #check_http_response not needed, because we have to retry the request in case of error
 
         #Check
@@ -855,7 +871,11 @@ function db_download_file
     fi
 
     print " > Downloading \"$FILE_SRC\" to \"$FILE_DST\"... $LINE_CR"
-    $CURL_BIN $CURL_ACCEPT_CERTIFICATES $CURL_PARAMETERS -X POST --globoff -D "$RESPONSE_FILE" -o "$FILE_DST" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"path\": \"$FILE_SRC\"}" "$API_DOWNLOAD_URL"
+    if [[ $ADMIN_USER = "" ]]; then
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES $CURL_PARAMETERS -X POST --globoff -D "$RESPONSE_FILE" -o "$FILE_DST" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"path\": \"$FILE_SRC\"}" "$API_DOWNLOAD_URL"
+    else
+        $CURL_BIN $CURL_ACCEPT_CERTIFICATES $CURL_PARAMETERS -X POST --globoff -D "$RESPONSE_FILE" -o "$FILE_DST" --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" --header "Dropbox-API-Arg: {\"path\": \"$FILE_SRC\"}" --header "Dropbox-API-Select-Admin: $ADMIN_USER" "$API_DOWNLOAD_URL"
+    fi
     check_http_response
 
     #Check
